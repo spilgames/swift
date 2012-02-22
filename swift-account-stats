@@ -1,0 +1,81 @@
+#!/usr/bin/env python
+# Author: Jasper Capel (May 2011)
+# Gathers access data from swift by analyzing the account csv files (which generated and uploaded by account servers) so we can graph utilization
+import cloudfiles, pprint, pickle, StringIO, gzip, ConfigParser, signal, sys, os
+pp = pprint.PrettyPrinter(indent=4)
+
+config = ConfigParser.RawConfigParser()
+config.read('/opt/admin/scripts/etc/swift-stats.conf')
+# config.get(section, element)
+
+username = config.get("stats", "username")
+password = config.get("stats", "password")
+authurl = config.get("stats", "authurl")
+
+new_logs_container = config.get("account-stats", "new_logs_container")
+processed_logs_container = config.get("account-stats", "processed_logs_container")
+state_file = "/var/lib/swift-stats/account-state"
+pid_file = "/var/run/swift-account-stats.pid"
+
+def cleanup():
+    os.remove(pid_file)
+    sys.exit(0)
+
+def sig_handler(signum, frame):
+    print "Caught signal %s (%s)" % (signum, frame)
+    cleanup()
+
+
+# Clean up on kill / CTRL+C
+signal.signal(signal.SIGTERM, sig_handler)
+signal.signal(signal.SIGINT, sig_handler)
+
+if os.path.exists(pid_file):
+    fp = open(pid_file)
+    pid = fp.readline().strip()
+    fp.close()
+    if os.path.exists("/proc/%s" % pid):
+    	print "Pid file exists and process still running, not processing"
+    	sys.exit(1)
+    else:
+    	print "Stale pid file detected, continuing"
+
+# Create file with my pid
+fp = open(pid_file,"w+")
+fp.write("%s\n" % os.getpid())
+fp.close()
+
+state = {}
+
+def process_log_line(line, state):
+        bits = line.split(",")
+        account = bits.pop(0).strip('"')
+        if account not in state.keys():
+                state[account] = [int(bit.strip()) for bit in bits]
+        elif int(bits[2].strip()) > state[account][2]:
+                state[account] = [int(bit.strip()) for bit in bits]
+        return state
+
+conn = cloudfiles.get_connection(username, password, authurl=authurl)
+
+new_logs = conn.get_container(new_logs_container)
+if processed_logs_container in conn.list_containers():
+    processed_logs = conn.get_container(processed_logs_container)
+else:
+        print "Creating container"
+        processed_logs = conn.create_container(processed_logs_container)
+
+for log_file in new_logs.get_objects():
+        compressedstream = StringIO.StringIO(log_file.read()) 
+        for line in gzip.GzipFile(fileobj=compressedstream):
+                process_log_line(line, state)
+        log_file.copy_to(processed_logs_container, log_file.name)
+        new_logs.delete_object(log_file.name)
+
+if len(state.keys()) > 0:
+        state["_TOTAL"] = [sum(v[0] for k,v in state.iteritems()), sum(v[1] for k,v in state.iteritems()), sum(v[2] for k,v in state.iteritems())]
+        pp.pprint(state)
+        fp = open(state_file,"w+")
+        pickle.dump(state, fp)
+        fp.close()
+cleanup()

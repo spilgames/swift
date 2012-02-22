@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# Nagios check to check swift storage node async pending queue
+
+# Usage
+function usage() {
+        echo "Usage: ${0} -w warn -c crit"
+        exit 3
+}
+
+# Get commandline options
+while getopts "w:c:" OPT; do
+        case "${OPT}" in
+                w )
+                        WARN="${OPTARG}"
+                ;;
+                c )
+                        CRIT="${OPTARG}"
+                ;;
+                * )
+                        usage
+                ;;
+        esac                                                                                                                                                                                                                      
+done                                                                                                                                                                                                                              
+                                                                                                                                                                                                                                  
+[[ "${WARN}" == "" ]] && WARN=1000                                                                                                                                                                                                   
+[[ "${CRIT}" == "" ]] && CRIT=10000                                                                                                                                                                                                  
+
+CURTIME=$(date +%s)                                                                 
+TIME=$(cat /var/lib/swift-stats/async_pending | cut -f 1 -d " ")                                                                                                                                                                 
+TOTAL=$(cat /var/lib/swift-stats/async_pending | cut -f 2 -d " ")            
+DELTA=$((CURTIME-TIME))
+
+if [ ${TOTAL} -gt ${CRIT} ]                                                                                                                                                                                                       
+then                                                                                                                                                                                                                              
+        echo -n "CRITICAL - "                                                                                                                                                                                                     
+        exitcode=2                                                                                                                                                                                                                
+elif [ ${TOTAL} -gt ${WARN} ]
+then
+        echo -n "WARNING - "
+        exitcode=1
+else
+        echo -n "OK - "
+        exitcode=0
+fi
+
+if [ ${DELTA} -gt 3600 ];
+then
+	# Override exit code since the stats script last run a long time ago
+	exitcode=2
+	echo -n "Stats script last ran ${DELTA} seconds ago - "
+fi
+
+echo "Async pending: ${TOTAL} | 'ASYNC_PENDING'=${TOTAL};"
+exit $exitcode

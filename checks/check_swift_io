@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# This script produces %util for disk io for each swift-disk
+
+single_disk=$(ls /srv/node|tail -1)
+if [[ `echo ${#single_disk}` -gt 4 ]];
+then
+    swift_disks=$(for i in `ls /srv/node`; do ls -l /dev/disk/by-id/scsi-$i |awk '{ print substr( $0, length($0) - 2, length($0) ) }'; done);
+else
+    swift_disks=$(ls /srv/node | tr -d '[0-9]')
+fi
+iostat -x $swift_disks 8 2 | awk '
+BEGIN {
+	dev_count=0;
+	ORS=" ";
+	total=0;
+	count=0;
+}
+{
+if ($1 == "Device:") {
+	dev_count++;
+	if (dev_count == 2) {
+		print "(performance data only) |"
+	}
+} else if (dev_count == 2 && NF >= 12) {
+	print $1 "=" $12 "%;";
+	total += $12;
+	count += 1;
+}
+}
+END {
+	print "AVG=" total / count "%;";
+	print "\n";
+}
+'
+exit 0

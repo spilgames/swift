@@ -1,0 +1,4 @@
+# Runs on the stats node, collects log files from the storage cloud and processes them
+* * * * * root /opt/admin/scripts/swift-access-stats >/dev/null 2>&1
+30 * * * * root /opt/admin/scripts/swift-account-stats >/dev/null 2>&1
+0 2 * * * root /opt/admin/scripts/swift-access-save-hourly  >/dev/null 2>&1

@@ -1,0 +1,31 @@
+#!/usr/bin/env python
+# Author: Jasper Capel (May 2011)
+# Nagios plugin to return information on amount of data stored in swift (reads from a local state file)
+# TODO: return when the data import had it's last run and return a warning if this was too long ago
+
+import sys, pickle, optparse
+
+parser = optparse.OptionParser()
+parser.add_option("-t", "--type", dest="type", default=2, help="Type - 0 for #containers, 1 for #objects, 2 for bytes (default)")
+parser.add_option("-a", "--account", dest="account", default="_TOTAL", help="Account, default is totals")
+
+(opt,args) = parser.parse_args()
+
+if int(opt.type) not in [0,1,2]:
+        parser.error("%s is not a valid type" % opt.type)
+
+state_file = "/var/lib/swift-stats/account-state"
+fp = open(state_file,"r")
+stats = pickle.load(fp)
+fp.close()
+
+if opt.account not in stats.keys():
+        parser.error("%s is not a valid account" % opt.account)
+
+mapper = {0: "containers", 1: "objects", 2: "bytes"}
+
+return_val = "'%s-%s'=%s%s" % (opt.account, mapper[int(opt.type)], stats[opt.account][int(opt.type)], "b" if int(opt.type) == 2 else "")
+
+print "OK | %s" % return_val
+
+sys.exit(0)

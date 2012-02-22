@@ -1,0 +1,23 @@
+#!/usr/bin/env python
+# Author: Jasper Capel (May 2011)
+# Nagios plugin to return access statistics (read from a local state file)
+# TODO: return when the data import had it's last run and return a warning if this was too long ago
+import sys, pickle, ConfigParser
+
+
+state_file = "/var/lib/swift-stats/access-state"
+
+fp = open(state_file,"r")
+stats = pickle.load(fp)
+fp.close()
+
+interesting_bits = ["GET-20x", "GET-40x", "DELETE-20x", "DELETE-40x", "PUT-20x", "PUT-40x", "PUT-50x", "HEAD-20x", "HEAD-40x"]
+
+return_bits = []
+
+for bit in interesting_bits:
+        return_bits.append("'%s'=%sc" % (bit, stats[bit]))
+
+print "OK | %s" % " ".join(return_bits)
+
+sys.exit(0)

@@ -1,0 +1,97 @@
+#!/usr/bin/env python
+# Author: Jasper Capel (May 2011)
+# Gathers access data from swift by analyzing the proxy log files (which are uploaded by the proxies) so we can graph utilization
+
+import cloudfiles, pprint, pickle, StringIO, gzip, ConfigParser, signal, sys, os
+
+pp = pprint.PrettyPrinter(indent=4)
+
+config = ConfigParser.RawConfigParser()
+config.read('/opt/admin/scripts/etc/swift-stats.conf')
+# config.get(section, element)
+
+username = config.get("stats", "username")
+password = config.get("stats", "password")
+authurl = config.get("stats", "authurl")
+
+new_logs_container = config.get("access-stats", "new_logs_container")
+processed_logs_container = config.get("access-stats", "processed_logs_container")
+state_file = "/var/lib/swift-stats/access-state"
+pid_file = "/var/run/swift-access-stats.pid"
+
+def cleanup():
+        os.remove(pid_file)
+        sys.exit(0)
+
+def sig_handler(signum, frame):
+        print "Caught signal %s (%s)" % (signum, frame)
+        cleanup()
+
+
+# Clean up on kill / CTRL+C
+signal.signal(signal.SIGTERM, sig_handler)
+signal.signal(signal.SIGINT, sig_handler)
+
+if os.path.exists(pid_file):
+    fp = open(pid_file)
+    pid = fp.readline().strip()
+    fp.close()
+    if os.path.exists("/proc/%s" % pid):
+    	print "Pid file exists and process still running, not processing"
+    	sys.exit(1)
+    else:
+    	print "Stale pid file detected, continuing"
+
+# Create file with my pid
+fp = open(pid_file,"w+")
+fp.write("%s\n" % os.getpid())
+fp.close()
+
+try:
+        fp = open(state_file,"r")
+        state = pickle.load(fp)
+        fp.close()
+except:
+        state = {"GET-20x": 0, "GET-30x": 0, "GET-40x": 0, "GET-50x": 0, "PUT-20x": 0, "PUT-30x": 0, "PUT-40x": 0, "PUT-50x": 0, "DELETE-20x": 0, "DELETE-30x": 0, "DELETE-40x": 0, "DELETE-50x": 0, "COPY-20x": 0, "COPY-30x": 0, "COPY-40x": 0, "DELETE-50x": 0, "HEAD-20x": 0, "HEAD-30x": 0, "HEAD-40x": 0, "HEAD-50x": 0}
+
+def process_log_line(line, state):
+        bits = line.split()
+        key = ""
+        try:
+                key = "%s-%sx" % (bits[5], bits[8][0:2])
+        except:
+                return state
+        if key in state.keys():
+                state[key] += 1
+        return state
+
+conn = cloudfiles.get_connection(username, password, authurl=authurl)
+
+new_logs = conn.get_container(new_logs_container)
+if processed_logs_container in conn.list_containers():
+    processed_logs = conn.get_container(processed_logs_container)
+else:
+        print "Creating container"
+        processed_logs = conn.create_container(processed_logs_container)
+
+for log_file in new_logs.get_objects():
+	print "Processing %s" % log_file
+	try:
+		compressedstream = StringIO.StringIO(log_file.read()) 
+		for line in gzip.GzipFile(fileobj=compressedstream):
+			process_log_line(line, state)
+		fp = open(state_file,"w+")
+		pickle.dump(state, fp)
+		fp.close()
+		log_file.copy_to(processed_logs_container, log_file.name)
+	except:
+		# Skip this file, it might be corrupt
+		print "Error processing %s - skipping" % log_file
+	finally:
+		try:
+			new_logs.delete_object(log_file.name)
+		except:
+			"Error deleting %s" % log_file
+
+print state
+cleanup()

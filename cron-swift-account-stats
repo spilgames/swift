@@ -1,0 +1,4 @@
+# Uploads swift account stats to storage cloud for analysis
+0 * * * * root swift-account-stats-logger /etc/swift/log-processor.conf >/dev/null 2>&1 
+10 * * * * root swift-log-uploader -v /etc/swift/log-processor.conf stats >/dev/null 2>&1
+30 * * * * root swift-log-stats-collector /etc/swift/log-processor.conf >/dev/null 2>&1
