@@ -1,4 +1,0 @@
-#!/usr/bin/env bash
-# Just a wrapper
-sudo /opt/admin/scripts/check_swift.py $1
-exit $?

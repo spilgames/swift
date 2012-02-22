@@ -1,0 +1,29 @@
+Introduction
+=====
+
+This directory contains a number of checks which can be used with nagios/opsview. Most of these checks are for gathering metrics and plotting these.
+
+stats/swift-access-stats
+    This script processes access logs uploaded into Swift to generate a pickled state-file with counters for GET/PUT/DELETE http methods and their status codes.
+    We run this every minute with cron.
+
+stats/swift-account-stats
+    This scripts processes account reports uploaded into Swift to generate some usage metrics (number of files / number of containers / space used)
+    
+check_swift.py
+    This script does a functional check of Swift, trying to get an auth token, putting something, and then deleting something
+    
+check_swift_access
+    This script reads the pickle-file produced by stats/swift-access-stats and returns the values to opsview for plotting    
+
+check_swift_account
+    This script reads the pickle-file produced by stats/swift-account-stats and returns the values to opsview for plotting
+
+check_swift_async_pending
+    This script returns number of async_pending objects. Can probably be replaced by a check that uses recon.
+
+check_swift_io
+    This script returns % disk utilization for disks in /srv/node
+
+swift-stats.conf
+    Configuration file for stats/* and check_swift.py
