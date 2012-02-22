@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Author: Jasper Capel (May 2011)
+# Author: Jasper Capel, Spil Games (May 2011)
 # Nagios plugin to return information on amount of data stored in swift (reads from a local state file)
 # TODO: return when the data import had it's last run and return a warning if this was too long ago
 

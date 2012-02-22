@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Nagios check to check swift storage node async pending queue
+# Author: Jasper Capel, Spil Games
 
 # Usage
 function usage() {

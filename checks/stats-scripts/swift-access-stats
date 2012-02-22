@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Author: Jasper Capel (May 2011)
+# Author: Jasper Capel, Spil Games (May 2011)
 # Gathers access data from swift by analyzing the proxy log files (which are uploaded by the proxies) so we can graph utilization
 
 import cloudfiles, pprint, pickle, StringIO, gzip, ConfigParser, signal, sys, os

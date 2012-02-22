@@ -27,3 +27,8 @@ check_swift_io
 
 swift-stats.conf
     Configuration file for stats/* and check_swift.py
+
+License
+======
+Apache License, version 2
+

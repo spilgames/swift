@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+# Performs a functional check of Swift
+# Author: Jasper Capel, Spil Games (May 2011)
 
 import cloudfiles, pprint, pickle, StringIO, gzip, ConfigParser, signal, sys, os, time
 

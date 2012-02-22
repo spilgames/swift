@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # This script produces %util for disk io for each swift-disk
+# Author: Jasper Capel / Robert van Leeuwen, Spil Games
 
 single_disk=$(ls /srv/node|tail -1)
 if [[ `echo ${#single_disk}` -gt 4 ]];
